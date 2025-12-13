@@ -2,13 +2,14 @@
 
 # Immich Backup Script
 # Configuration
-CONTAINERS=("immich-server" "immich_postgres" "immich_machine_learning" "immich_redis")
-BACKUP_SOURCE="/var/lib/docker/volumes"  # Adjust if your Docker volumes are elsewhere
-BACKUP_DEST="/mnt/unraid/immich-backup"
+CONTAINERS=("immich_server" "immich_postgres" "immich_machine_learning" "immich_redis")
+BACKUP_SOURCE_1="/var/lib/docker/volumes"  # Adjust if your Docker volumes are elsewhere
+BACKUP_SOURCE_2="/zfs4tb/immich-app"  
+BACKUP_DEST="/mnt/unraid/immich_backup"
 LOG_FILE="/tmp/immich-backup-$(date +%Y%m%d-%H%M%S).log"
 EMAIL="austin@austinnunn.net"
-SMTP_SERVER="in-v3.mailjet.com"  # Replace with your SMTP relay
-SMTP_PORT="587"  # Adjust if needed
+FROMEMAIL="herbert-jr@herbert.link"
+
 
 # Function to log messages
 log_message() {
@@ -20,7 +21,7 @@ send_email() {
     local subject="Immich Backup Report - $(date '+%Y-%m-%d %H:%M:%S')"
 
     # Using mailx with config file
-    mailx -s "$subject" "$EMAIL" < "$LOG_FILE"
+    mailx -r "$FROMEMAIL" -s "$subject" "$EMAIL" < "$LOG_FILE"
 
     log_message "Email notification sent to $EMAIL"
 }
@@ -32,16 +33,26 @@ log_message "Starting Immich backup process"
 # Stop Immich containers
 log_message "Stopping Immich containers..."
 for container in "${CONTAINERS[@]}"; do
-    if docker stop "$container" >> "$LOG_FILE" 2>&1; then
+    if sudo docker stop "$container" >> "$LOG_FILE" 2>&1; then
         log_message "Stopped container: $container"
     else
         log_message "Warning: Failed to stop container $container or it doesn't exist"
     fi
 done
 
-# Perform incremental backup using rsync
+# Perform incremental backup of docker volumes using rsync
 log_message "Starting incremental backup to $BACKUP_DEST"
-if rsync -avh --delete --progress "$BACKUP_SOURCE" "$BACKUP_DEST" >> "$LOG_FILE" 2>&1; then
+if sudo rsync -avh --delete --no-devices --no-specials --progress "$BACKUP_SOURCE_1" "$BACKUP_DEST" >> "$LOG_FILE" 2>&1; then
+    log_message "Backup completed successfully"
+    BACKUP_STATUS="SUCCESS"
+else
+    log_message "Backup failed"
+    BACKUP_STATUS="FAILED"
+fi
+
+# Perform incremental backup of docker data & database using rsync
+log_message "Starting incremental backup to $BACKUP_DEST"
+if sudo rsync -avh --delete --no-devices --no-specials --progress "$BACKUP_SOURCE_2" "$BACKUP_DEST" >> "$LOG_FILE" 2>&1; then
     log_message "Backup completed successfully"
     BACKUP_STATUS="SUCCESS"
 else
@@ -52,7 +63,7 @@ fi
 # Restart Immich containers
 log_message "Restarting Immich containers..."
 for container in "${CONTAINERS[@]}"; do
-    if docker start "$container" >> "$LOG_FILE" 2>&1; then
+    if sudo docker start "$container" >> "$LOG_FILE" 2>&1; then
         log_message "Started container: $container"
     else
         log_message "Warning: Failed to start container $container"
