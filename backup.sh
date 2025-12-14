@@ -2,13 +2,13 @@
 
 # Immich Backup Script
 # Configuration
-CONTAINERS=("immich_server" "immich_postgres" "immich_machine_learning" "immich_redis")
+CONTAINERS=("immich_server" "immich_postgres" "immich_machine_learning" "immich_redis") # Choose which containers to stop and backup
 BACKUP_SOURCE_1="/var/lib/docker/volumes"  # Adjust if your Docker volumes are elsewhere
-BACKUP_SOURCE_2="/zfs4tb/immich-app"  
-BACKUP_DEST="/mnt/unraid/immich_backup"
+BACKUP_SOURCE_2="/immich-app"  # Adjust if your data source is elsewhere
+BACKUP_DEST="/unraid/immich_backup" # Adjust your backup destination
 LOG_FILE="/tmp/immich-backup-$(date +%Y%m%d-%H%M%S).log"
-EMAIL="austin@austinnunn.net"
-FROMEMAIL="herbert-jr@herbert.link"
+EMAIL="(email)" # Enter recipient e-mail
+FROMEMAIL="(email)" #Enter sender e-mail
 
 
 # Function to log messages
